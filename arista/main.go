@@ -1,0 +1,97 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	arista "github.com/nleiva/yang-data-structures/gnmi/arista/aristapath"
+	"github.com/openconfig/ygnmi/ygnmi"
+)
+
+func main() {
+	targetAddr := "10.0.0.1:6030"
+	user := "admin"
+	pass := "admin"
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	c, err := initClient(ctx, targetAddr, user, pass)
+	if err != nil {
+		log.Fatalf("failed to init client: %v", err)
+	}
+
+	/////////////////////////
+	// Get one value for PATH
+	/////////////////////////
+	// pathOne := arista.Root().System().Hostname()
+	// pathOne := arista.Root().Interface("Ethernet3").Config()
+	pathOne := arista.Root().Interface("Ethernet3").Subinterface(0).Ipv4().Config()
+
+	val, err := ygnmi.Get(ctx, c, pathOne)
+	if err != nil {
+		log.Fatalf("failed to get one: %v", err)
+	}
+
+	p, _, err := ygnmi.ResolvePath(pathOne.PathStruct())
+	if err != nil {
+		log.Fatalf("failed to resolve path: %v", err)
+	}
+	fmt.Printf("Path: %v\n", p)
+	for _, v := range val.Address {
+		fmt.Printf("Address: %v\\%v\n", *v.Ip, *v.PrefixLength)
+	}
+	fmt.Println()
+
+	///////////////////////////////////
+	// Get all value for wildcard PATH
+	//////////////////////////////////
+	pathAll := arista.Root().InterfaceAny().Subinterface(0).Ipv4().AddressMap().Config()
+	vals, err := ygnmi.GetAll(ctx, c, pathAll)
+	if err != nil {
+		log.Fatalf("failed to get all: %v", err)
+	}
+	p, _, err = ygnmi.ResolvePath(pathAll.PathStruct())
+	if err != nil {
+		log.Fatalf("failed to resolve path: %v", err)
+	}
+	fmt.Printf("Path: %v\n", p)
+
+	// Get the value of each list element.
+	// With GetAll it is impossible to know the path associated with a value,
+	// so use LookupAll or Batch with with wildcard path instead.
+	for idx, val := range vals {
+		fmt.Printf("Value %d: ", idx)
+		for _, v := range val {
+			fmt.Printf("Address: %v\\%v\n", *v.Ip, *v.PrefixLength)
+		}
+	}
+
+	///////////////////////////////////
+	// Reconcile (WIP)
+	//////////////////////////////////
+
+	// Define the query root (typed)
+	// Query := arista.Root().Interface("Ethernet3").Config()
+	// Query := arista.Root().System().Ntp().Config()
+
+	// // Step 3: Create a reconciler for System_Ntp
+	// reconciler, err := ygnmi.NewReconciler(c, Query)
+	// if err != nil {
+	// 	log.Fatalf("Failed to create reconciler: %v", err)
+	// }
+
+	// serverAddress := "100.64.1.1"
+
+	// desired := &eos.System_Ntp{
+	// 	Server: map[string]*eos.System_Ntp_Server{
+	// 		serverAddress: {
+	// 			Address: ygot.String(serverAddress),
+	// 		},
+	// 	},
+	// }
+	// Reconcile desired state
+	// TODO
+}
