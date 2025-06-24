@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
 	arista "github.com/nleiva/yang-data-structures/gnmi/arista/aristapath"
+	eos "github.com/nleiva/yang-data-structures/gnmi/arista"
+	"github.com/google/go-cmp/cmp"
+	"github.com/openconfig/gnmi/errdiff"
 	"github.com/openconfig/ygnmi/ygnmi"
+)
 )
 
 func main() {
@@ -69,29 +75,59 @@ func main() {
 		}
 	}
 
+	fmt.Println()
+
 	///////////////////////////////////
 	// Reconcile (WIP)
 	//////////////////////////////////
 
 	// Define the query root (typed)
-	// Query := arista.Root().Interface("Ethernet3").Config()
-	// Query := arista.Root().System().Ntp().Config()
+	Query := arista.Root().System().Ntp().Config()
+	p, _, err = ygnmi.ResolvePath(Query.PathStruct())
+	if err != nil {
+		log.Fatalf("failed to resolve path: %v", err)
+	}
+	fmt.Printf("Path: %v\n", p)
 
-	// // Step 3: Create a reconciler for System_Ntp
-	// reconciler, err := ygnmi.NewReconciler(c, Query)
-	// if err != nil {
-	// 	log.Fatalf("Failed to create reconciler: %v", err)
-	// }
+	// Create a reconciler for System_Ntp
+	r, err := ygnmi.NewReconciler(c, Query)
+	if err != nil {
+		log.Fatalf("failed to create reconciler: %v", err)
+	}
 
-	// serverAddress := "100.64.1.1"
+	serverAddress := "100.64.1.1"
 
-	// desired := &eos.System_Ntp{
-	// 	Server: map[string]*eos.System_Ntp_Server{
-	// 		serverAddress: {
-	// 			Address: ygot.String(serverAddress),
-	// 		},
-	// 	},
-	// }
-	// Reconcile desired state
-	// TODO
+	desired := &eos.System_Ntp{
+		Server: map[string]*eos.System_Ntp_Server{
+			serverAddress: {
+				Address: &serverAddress,
+			},
+		},
+	}
+
+	err = r.AddSubReconciler(arista.Root().System().Ntp().Server(serverAddress).Config(), func(cfg, state *ygnmi.Value[*eos.System_Ntp]) error {
+		cfgV, _ := cfg.Val()
+		if d := cmp.Diff(cfgV, desired); d != "" {
+			fmt.Printf(">>>>> unexpected cfg diff detected:\n %s\n", d)
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Fatalf("error adding subreconciler: %s", err)
+	}
+
+	r.Start(ctx, func(cfg, state *ygnmi.Value[*eos.System_Ntp]) error {
+		return nil
+	})
+
+	// Check diff
+	wantErr := "context deadline exceeded"
+	err = r.Await()
+	if diff := errdiff.Substring(err, wantErr); !errors.Is(err, io.EOF) && diff != "" {
+		fmt.Printf("watch() returned unexpected diff: %s", diff)
+		return
+	}
+
+	// Reconcile desired state (TODO)
 }
