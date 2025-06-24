@@ -14,7 +14,6 @@ import (
 	"github.com/openconfig/gnmi/errdiff"
 	"github.com/openconfig/ygnmi/ygnmi"
 )
-)
 
 func main() {
 	targetAddr := "10.0.0.1:6030"
