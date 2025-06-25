@@ -13,6 +13,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/openconfig/gnmi/errdiff"
 	"github.com/openconfig/ygnmi/ygnmi"
+	"github.com/openconfig/ygot/ygot"
 )
 
 func main() {
@@ -44,7 +45,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to resolve path: %v", err)
 	}
-	fmt.Printf("Path: %v\n", p)
+
+	st, err := ygot.PathToString(p)
+	if err != nil {
+		log.Fatalf("failed to convert path to string: %v", err)
+	}
+
+	fmt.Printf("Path: %v\n", st)
 	for _, v := range val.Address {
 		fmt.Printf("Address: %v\\%v\n", *v.Ip, *v.PrefixLength)
 	}
