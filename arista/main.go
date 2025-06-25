@@ -54,23 +54,19 @@ func main() {
 	// Get all value for wildcard PATH
 	//////////////////////////////////
 	pathAll := arista.Root().InterfaceAny().Subinterface(0).Ipv4().AddressMap().Config()
-	vals, err := ygnmi.GetAll(ctx, c, pathAll)
-	if err != nil {
-		log.Fatalf("failed to get all: %v", err)
-	}
-	p, _, err = ygnmi.ResolvePath(pathAll.PathStruct())
-	if err != nil {
-		log.Fatalf("failed to resolve path: %v", err)
-	}
-	fmt.Printf("Path: %v\n", p)
 
-	// Get the value of each list element.
-	// With GetAll it is impossible to know the path associated with a value,
-	// so use LookupAll or Batch with with wildcard path instead.
-	for idx, val := range vals {
-		fmt.Printf("Value %d: ", idx)
+	all, err := ygnmi.LookupAll(context.Background(), c, pathAll)
+	if err != nil {
+		log.Fatalf("failed to get all paths: %v", err)
+	}
+	for _, single := range all {
+		fmt.Printf("Interface: %v", single.Path.GetElem()[1].Key["name"])
+		val, ok := single.Val()
+		if !ok {
+			continue
+		}
 		for _, v := range val {
-			fmt.Printf("Address: %v\\%v\n", *v.Ip, *v.PrefixLength)
+			fmt.Printf("  -> Address: %v\\%v\n", *v.Ip, *v.PrefixLength)
 		}
 	}
 
@@ -109,15 +105,17 @@ func main() {
 		if err != nil {
 			return err
 		}
+
 		cfgV, ok := cfg.Val()
 		if !ok {
-			return fmt.Errorf("path %s: %w", val.Path.String(), ygnmi.ErrNotPresent)
+			return fmt.Errorf("path %s: %w", cfg.Path.String(), ygnmi.ErrNotPresent)
 		}
 		if d := cmp.Diff(cfgV, desired); d != "" {
 			fmt.Printf(">>>>> unexpected cfg diff detected:\n %s\n", d)
 
 			// Enforce desired state
 			b := new(ygnmi.SetBatch)
+			//ygnmi.BatchDelete(b, Query)
 			ygnmi.BatchReplace(b, Query, desired)
 
 			res, err := b.Set(ctx, c)
@@ -126,8 +124,18 @@ func main() {
 			}
 			fmt.Printf("config enforced at: %v for %v\n\n", res.Timestamp.Format("2006-01-02 15:04:05"), val.Path.String())
 		}
-		return nil
-	})
+
+		// stateV, ok := state.Val()
+		// if !ok {
+		// 	return fmt.Errorf("path %s: %w", state.Path.String(), ygnmi.ErrNotPresent)
+		// }
+		// if d := cmp.Diff(stateV, desired); d != "" {
+		// 	fmt.Printf(">>>>> unexpected state diff detected:\n %s\n", d)
+		// }
+
+		return ygnmi.Continue
+	},
+	)
 
 	// Check diff
 	wantErr := "context deadline exceeded"
