@@ -10,8 +10,8 @@ Supported Encodings:
   - ASCII
 gNMI Version: 0.7.0
 
-Path: elem:{name:"interfaces"} elem:{name:"interface" key:{key:"name" value:"Ethernet3"}} elem:{name:"subinterfaces"} elem:{name:"subinterface" key:{key:"index" value:"0"}} elem:{name:"ipv4"}
-Address: 137.0.41.190\30
+Path: /interfaces/interface[name=Ethernet3]/subinterfaces/subinterface[index=0]/ipv4
+Address: 100.0.41.190\30
 
 Interface: Ethernet1  -> Address: 10.126.52.14\30
 Interface: Ethernet2  -> Address: 137.3.20.249\30
