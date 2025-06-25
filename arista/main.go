@@ -104,29 +104,28 @@ func main() {
 		},
 	}
 
-	err = r.AddSubReconciler(arista.Root().System().Ntp().Server(serverAddress).Config(), func(cfg, state *ygnmi.Value[*eos.System_Ntp]) error {
-		cfgV, _ := cfg.Val()
+	r.Start(ctx, func(cfg, state *ygnmi.Value[*eos.System_Ntp]) error {
+		val, err := ygnmi.Lookup(ctx, c, Query)
+		if err != nil {
+			return err
+		}
+		cfgV, ok := cfg.Val()
+		if !ok {
+			return fmt.Errorf("path %s: %w", val.Path.String(), ygnmi.ErrNotPresent)
+		}
 		if d := cmp.Diff(cfgV, desired); d != "" {
 			fmt.Printf(">>>>> unexpected cfg diff detected:\n %s\n", d)
-			
+
 			// Enforce desired state
 			b := new(ygnmi.SetBatch)
 			ygnmi.BatchReplace(b, Query, desired)
-			
+
 			res, err := b.Set(ctx, c)
 			if err != nil {
 				log.Fatalf("gNMI set failed: %v", err)
 			}
-			fmt.Printf("config enforced at: %v\n\n", res.Timestamp.Format("2006-01-02 15:04:05"))
+			fmt.Printf("config enforced at: %v for %v\n\n", res.Timestamp.Format("2006-01-02 15:04:05"), val.Path.String())
 		}
-		return nil
-	})
-
-	if err != nil {
-		log.Fatalf("error adding subreconciler: %s", err)
-	}
-
-	r.Start(ctx, func(cfg, state *ygnmi.Value[*eos.System_Ntp]) error {
 		return nil
 	})
 
@@ -137,6 +136,4 @@ func main() {
 		fmt.Printf("watch() returned unexpected diff: %s", diff)
 		return
 	}
-
-	// Reconcile desired state (TODO)
 }
