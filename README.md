@@ -11,13 +11,13 @@ Supported Encodings:
 gNMI Version: 0.7.0
 
 Path: /interfaces/interface[name=Ethernet3]/subinterfaces/subinterface[index=0]/ipv4
-Address: 100.0.41.190\30
+Address: 100.0.41.190/30
 
-Interface: Ethernet1  -> Address: 10.126.52.14\30
-Interface: Ethernet2  -> Address: 137.3.20.249\30
-Interface: Ethernet3  -> Address: 137.0.41.190\30
-Interface: Ethernet4  -> Address: 137.0.41.1\30
-Interface: Loopback0  -> Address: 137.2.20.1\32
+Interface: Ethernet1  -> Address: 10.126.52.14/30
+Interface: Ethernet2  -> Address: 100.3.20.249/30
+Interface: Ethernet3  -> Address: 100.0.41.190/30
+Interface: Ethernet4  -> Address: 100.0.41.1/30
+Interface: Loopback0  -> Address: 100.2.20.1/32
 
 Path: elem:{name:"system"} elem:{name:"ntp"}
 >>>>> unexpected cfg diff detected:
