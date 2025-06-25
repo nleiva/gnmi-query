@@ -108,6 +108,16 @@ func main() {
 		cfgV, _ := cfg.Val()
 		if d := cmp.Diff(cfgV, desired); d != "" {
 			fmt.Printf(">>>>> unexpected cfg diff detected:\n %s\n", d)
+			
+			// Enforce desired state
+			b := new(ygnmi.SetBatch)
+			ygnmi.BatchReplace(b, Query, desired)
+			
+			res, err := b.Set(ctx, c)
+			if err != nil {
+				log.Fatalf("gNMI set failed: %v", err)
+			}
+			fmt.Printf("config enforced at: %v\n\n", res.Timestamp.Format("2006-01-02 15:04:05"))
 		}
 		return nil
 	})
