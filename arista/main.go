@@ -53,7 +53,7 @@ func main() {
 
 	fmt.Printf("Path: %v\n", st)
 	for _, v := range val.Address {
-		fmt.Printf("Address: %v\\%v\n", *v.Ip, *v.PrefixLength)
+		fmt.Printf("Address: %v/%v\n", *v.Ip, *v.PrefixLength)
 	}
 	fmt.Println()
 
@@ -73,7 +73,7 @@ func main() {
 			continue
 		}
 		for _, v := range val {
-			fmt.Printf("  -> Address: %v\\%v\n", *v.Ip, *v.PrefixLength)
+			fmt.Printf("  -> Address: %v/%v\n", *v.Ip, *v.PrefixLength)
 		}
 	}
 
