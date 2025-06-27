@@ -32,8 +32,6 @@ func main() {
 	/////////////////////////
 	// Get one value for PATH
 	/////////////////////////
-	// pathOne := arista.Root().System().Hostname()
-	// pathOne := arista.Root().Interface("Ethernet3").Config()
 	pathOne := arista.Root().Interface("Ethernet3").Subinterface(0).Ipv4().Config()
 
 	val, err := ygnmi.Get(ctx, c, pathOne)
@@ -82,8 +80,6 @@ func main() {
 	///////////////////////////////////
 	// Reconcile (WIP)
 	//////////////////////////////////
-
-	// Define the query root (typed)
 	Query := arista.Root().System().Ntp().Config()
 	p, _, err = ygnmi.ResolvePath(Query.PathStruct())
 	if err != nil {
@@ -121,25 +117,12 @@ func main() {
 			fmt.Printf(">>>>> unexpected cfg diff detected:\n %s\n", d)
 
 			// Enforce desired state
-			b := new(ygnmi.SetBatch)
-			//ygnmi.BatchDelete(b, Query)
-			ygnmi.BatchReplace(b, Query, desired)
-
-			res, err := b.Set(ctx, c)
+			res, err := ygnmi.Replace(ctx, c, Query, desired)
 			if err != nil {
-				log.Fatalf("gNMI set failed: %v", err)
+				log.Fatalf("gNMI set replace failed: %v", err)
 			}
 			fmt.Printf("config enforced at: %v for %v\n\n", res.Timestamp.Format("2006-01-02 15:04:05"), val.Path.String())
 		}
-
-		// stateV, ok := state.Val()
-		// if !ok {
-		// 	return fmt.Errorf("path %s: %w", state.Path.String(), ygnmi.ErrNotPresent)
-		// }
-		// if d := cmp.Diff(stateV, desired); d != "" {
-		// 	fmt.Printf(">>>>> unexpected state diff detected:\n %s\n", d)
-		// }
-
 		return ygnmi.Continue
 	},
 	)
