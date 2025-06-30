@@ -29,17 +29,17 @@ func main() {
 		log.Fatalf("failed to init client: %v", err)
 	}
 
-	/////////////////////////
+	//////////////////////////
 	// Get one value for PATH
-	/////////////////////////
-	pathOne := arista.Root().Interface("Ethernet3").Subinterface(0).Ipv4().Config()
+	//////////////////////////
+	pathOne := arista.Root().Interface("Ethernet3").Subinterface(0).Ipv4()
 
-	val, err := ygnmi.Get(ctx, c, pathOne)
+	val, err := ygnmi.Get(ctx, c, pathOne.Config())
 	if err != nil {
 		log.Fatalf("failed to get one: %v", err)
 	}
 
-	p, _, err := ygnmi.ResolvePath(pathOne.PathStruct())
+	p, _, err := ygnmi.ResolvePath(pathOne.Config().PathStruct())
 	if err != nil {
 		log.Fatalf("failed to resolve path: %v", err)
 	}
@@ -55,12 +55,12 @@ func main() {
 	}
 	fmt.Println()
 
+	////////////////////////////////////
+	// Get all values for wildcard PATH
 	///////////////////////////////////
-	// Get all value for wildcard PATH
-	//////////////////////////////////
-	pathAll := arista.Root().InterfaceAny().Subinterface(0).Ipv4().AddressMap().Config()
+	pathAll := arista.Root().InterfaceAny().Subinterface(0).Ipv4().AddressMap()
 
-	all, err := ygnmi.LookupAll(context.Background(), c, pathAll)
+	all, err := ygnmi.LookupAll(context.Background(), c, pathAll.Config())
 	if err != nil {
 		log.Fatalf("failed to get all paths: %v", err)
 	}
@@ -77,34 +77,34 @@ func main() {
 
 	fmt.Println()
 
-	///////////////////////////////////
+	////////////////////////////////////
 	// Reconcile (WIP)
-	//////////////////////////////////
-	Query := arista.Root().System().Ntp().Config()
-	p, _, err = ygnmi.ResolvePath(Query.PathStruct())
+	///////////////////////////////////
+
+	serverAddress := "100.64.1.1"
+
+	ntpPath := arista.Root().System().Ntp()
+	p, _, err = ygnmi.ResolvePath(ntpPath.Config().PathStruct())
 	if err != nil {
 		log.Fatalf("failed to resolve path: %v", err)
 	}
 	fmt.Printf("Path: %v\n", p)
 
 	// Create a reconciler for System_Ntp
-	r, err := ygnmi.NewReconciler(c, Query)
+	r, err := ygnmi.NewReconciler(c, ntpPath.Config())
 	if err != nil {
 		log.Fatalf("failed to create reconciler: %v", err)
 	}
 
-	serverAddress := "100.64.1.1"
+	// Desired state
+	root := new(eos.Eos)
+	ntp := root.GetOrCreateSystem().GetOrCreateNtp()
+	// ntp.Enabled =  ygot.Bool(true)
+	ntp.GetOrCreateServer(serverAddress)
 
-	desired := &eos.System_Ntp{
-		Server: map[string]*eos.System_Ntp_Server{
-			serverAddress: {
-				Address: &serverAddress,
-			},
-		},
-	}
 
 	r.Start(ctx, func(cfg, state *ygnmi.Value[*eos.System_Ntp]) error {
-		val, err := ygnmi.Lookup(ctx, c, Query)
+		val, err := ygnmi.Lookup(ctx, c, ntpPath.Config())
 		if err != nil {
 			return err
 		}
@@ -113,21 +113,22 @@ func main() {
 		if !ok {
 			return fmt.Errorf("path %s: %w", cfg.Path.String(), ygnmi.ErrNotPresent)
 		}
-		if d := cmp.Diff(cfgV, desired); d != "" {
+		if d := cmp.Diff(cfgV, ntp); d != "" {
 			fmt.Printf(">>>>> unexpected cfg diff detected:\n %s\n", d)
 
 			// Enforce desired state
-			res, err := ygnmi.Replace(ctx, c, Query, desired)
+			res, err := ygnmi.Replace(ctx, c, ntpPath.Config(), ntp)
 			if err != nil {
 				log.Fatalf("gNMI set replace failed: %v", err)
 			}
+
 			fmt.Printf("config enforced at: %v for %v\n\n", res.Timestamp.Format("2006-01-02 15:04:05"), val.Path.String())
 		}
+
 		return ygnmi.Continue
 	},
 	)
 
-	// Check diff
 	wantErr := "context deadline exceeded"
 	err = r.Await()
 	if diff := errdiff.Substring(err, wantErr); !errors.Is(err, io.EOF) && diff != "" {
