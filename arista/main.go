@@ -111,7 +111,7 @@ func main() {
 
 		cfgV, ok := cfg.Val()
 		if !ok {
-			return fmt.Errorf("path %s: %w", cfg.Path.String(), ygnmi.ErrNotPresent)
+			fmt.Printf(">>>>> path %s: %s\n", cfg.Path.String(), ygnmi.ErrNotPresent.Error())
 		}
 		if d := cmp.Diff(cfgV, ntp); d != "" {
 			fmt.Printf(">>>>> unexpected cfg diff detected:\n %s\n", d)
