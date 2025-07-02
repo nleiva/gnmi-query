@@ -1,6 +1,6 @@
 # gNMI Test Application
 
-A comprehensive gNMI (gRPC Network Management Interface) test application that demonstrates various network device management operations using the [ygnmi](https://github.com/openconfig/ygnmi) Go package to interact with Arista devices.
+A quick gNMI (gRPC Network Management Interface) test application that demonstrates different network device management operations using the [ygnmi](https://github.com/openconfig/ygnmi) Go package to interact with Arista devices.
 
 ## Features
 
